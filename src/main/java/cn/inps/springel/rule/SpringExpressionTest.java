@@ -9,6 +9,9 @@ import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public class SpringExpressionTest {
     public  static Logger log  =  LoggerFactory.getLogger(SpringExpressionTest.class);
@@ -21,8 +24,8 @@ public class SpringExpressionTest {
 
         Method execute = null;
         try {
-            execute = MyBeanResolver.class.getDeclaredMethod("execute");
-           // execute = MyBeanResolver.class.getDeclaredMethod("execute",String.class);
+          //  execute = MyBeanResolver.class.getDeclaredMethod("execute");
+           execute = MyBeanResolver.class.getDeclaredMethod("execute", String.class,String.class);
         } catch (NoSuchMethodException e) {
             e.printStackTrace();
         }
@@ -35,9 +38,16 @@ public class SpringExpressionTest {
 //        BeanFactory beanFactory = SpringBeanUtils.getBeanFactory();
 //        ctx.setBeanResolver(new BeanFactoryResolver(beanFactory));
         ctx.setBeanResolver(new MyBeanResolver());
-        ctx.setVariable("aa","bb");
+
+
+        Map<String,Object> hm = new   HashMap<String ,Object>();
+        Map<String, Object>  lhm =  new LinkedHashMap<String, Object>();
+        hm.put("bb","bbbbb");
+        hm.put("cc","ccccc");
+
+        ctx.setVariable("aa","aaaaaa");
         String  a  = "xxxx";
-        ctx.setRootObject(a);
+        ctx.setRootObject(hm);
 
 
 //        ClassPathXmlApplicationContext ctxpath = new ClassPathXmlApplicationContext();
@@ -67,7 +77,7 @@ public class SpringExpressionTest {
 
 
         //执行方法1
-        Person resultp  = parser.parseExpression("#execute2()").getValue(ctx,Person.class);
+        Person resultp  = parser.parseExpression("#execute1('dddd','xxx')").getValue(ctx,Person.class);
         log.info("executeperson result:{}",resultp.getName());
 
         //执行方法2
@@ -89,9 +99,17 @@ public class SpringExpressionTest {
         ExpressionParser parser = new SpelExpressionParser();
         StandardEvaluationContext ctx = new StandardEvaluationContext();
         ctx.setBeanResolver(new MyBeanResolver());
+
         ctx.setVariable("key","value");
-        String  a  = "xxxx";
-        ctx.setRootObject(a);
-        Person result2 = parser.parseExpression("@aa").getValue(ctx, Person.class);
+        Map<String,Object>  lhm =  new LinkedHashMap<String,Object>();
+        lhm.put("bb","bbbb");
+        lhm.put("cc","cccc");
+        ctx.setRootObject(lhm);
+
+    //    ParserContext ParserContext  = new ParserContext();
+
+      //  String resultxx = parser.parseExpression("#key").setValue(ctx,"xxx");
+
+        Person result2 = parser.parseExpression("#key").getValue(ctx, Person.class);
 
     }}
