@@ -95,7 +95,7 @@ public class SpringExpressionTest {
     }
 
     @Test
-    public void testRule(){
+    public void testResolver(){
         ExpressionParser parser = new SpelExpressionParser();
         StandardEvaluationContext ctx = new StandardEvaluationContext();
         ctx.setBeanResolver(new MyBeanResolver());
@@ -108,8 +108,40 @@ public class SpringExpressionTest {
 
     //    ParserContext ParserContext  = new ParserContext();
 
-      //  String resultxx = parser.parseExpression("#key").setValue(ctx,"xxx");
+       parser.parseExpression("#key").setValue(ctx,"xxx");
 
-        Person result2 = parser.parseExpression("#key").getValue(ctx, Person.class);
+        Person result2 = parser.parseExpression("@key").getValue(ctx, Person.class);
 
-    }}
+    }
+
+    @Test
+    public void testMethod(){
+        ExpressionParser parser = new SpelExpressionParser();
+        StandardEvaluationContext ctx = new StandardEvaluationContext();
+
+
+        Method executeMethod = null;
+        try {
+            //  execute = MyBeanResolver.class.getDeclaredMethod("execute");
+            executeMethod = MyBeanResolver.class.getDeclaredMethod("execute", String.class,String.class);
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+        }
+        ctx.registerFunction("execute", executeMethod);
+
+        Map<String,Object>  lhm =  new LinkedHashMap<String,Object>();
+        lhm.put("当前人id","bbbb");
+        lhm.put("流程定义id","cccc");
+        lhm.put("活动定义id","dddd");
+
+
+        String  el  = "获取部门领导（当前人id,流程定义id）";
+
+        //执行方法1
+        Person resultp  = parser.parseExpression("#execute('dddd','xxx')").getValue(ctx,Person.class);
+        log.info("executeperson result:{}",resultp.getName());
+
+    }
+
+
+}
