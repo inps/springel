@@ -38,7 +38,11 @@ public class SpringExpressionTest {
 //        BeanFactory beanFactory = SpringBeanUtils.getBeanFactory();
 //        ctx.setBeanResolver(new BeanFactoryResolver(beanFactory));
         ctx.setBeanResolver(new MyBeanResolver());
-
+//        ctx.setBeanResolver(new MyBeanResolverB());
+//        ctx.setBeanResolver(new MyBeanResolver());
+//        ClassPathXmlApplicationContext ctxpath = new ClassPathXmlApplicationContext();
+//        ctxpath.refresh();
+//        ctx.setBeanResolver(new BeanFactoryResolver(ctxpath));
 
         Map<String,Object> hm = new   HashMap<String ,Object>();
         Map<String, Object>  lhm =  new LinkedHashMap<String, Object>();
@@ -50,9 +54,7 @@ public class SpringExpressionTest {
         ctx.setRootObject(hm);
 
 
-//        ClassPathXmlApplicationContext ctxpath = new ClassPathXmlApplicationContext();
-//        ctxpath.refresh();
-//        ctx.setBeanResolver(new BeanFactoryResolver(ctxpath));
+
 
 
 //        ClassPathXmlApplicationContext ctx = new ClassPathXmlApplicationContext();
@@ -77,19 +79,19 @@ public class SpringExpressionTest {
 
 
         //执行方法1
-        Person resultp  = parser.parseExpression("#execute1('dddd','xxx')").getValue(ctx,Person.class);
-        log.info("executeperson result:{}",resultp.getName());
+//        Person resultp  = parser.parseExpression("#execute1('dddd','xxx')").getValue(ctx,Person.class);
+//        log.info("executeperson result:{}",resultp.getName());
 
         //执行方法2
 //        Properties result1 = parser.parseExpression("@systemProperties").getValue(ctx, Properties.class);
 //        log.info("ress:{}",result1.toString());
 
         //执行方法2
-      //  Person result1 = parser.parseExpression("@resolver").getValue(ctx, Person.class);
+       Person result1 = parser.parseExpression("@resolv").getValue(ctx, Person.class);
 
-        Person result2 = parser.parseExpression("@aa").getValue(ctx, Person.class);
+      //  Person result2 = parser.parseExpression("@aa").getValue(ctx, Person.class);
 
-        log.info("ressxxx:{}",result2.getName());
+       // log.info("ressxxx:{}",result2.getName());
 
 
     }
@@ -119,28 +121,65 @@ public class SpringExpressionTest {
         ExpressionParser parser = new SpelExpressionParser();
         StandardEvaluationContext ctx = new StandardEvaluationContext();
 
+        String className  = "cn.inps.springel.rule.MyBeanResolver";
 
         Method executeMethod = null;
         try {
+
+            if(className!=null||!className.trim().equals("")){
             //  execute = MyBeanResolver.class.getDeclaredMethod("execute");
-            executeMethod = MyBeanResolver.class.getDeclaredMethod("execute", String.class,String.class);
+                try {
+                    executeMethod = Class.forName(className).getDeclaredMethod("execute", String.class,String.class);
+
+
+
+                } catch (ClassNotFoundException e) {
+                    e.printStackTrace();
+                }
+            }
         } catch (NoSuchMethodException e) {
             e.printStackTrace();
         }
         ctx.registerFunction("execute", executeMethod);
 
         Map<String,Object>  lhm =  new LinkedHashMap<String,Object>();
-        lhm.put("当前人id","bbbb");
-        lhm.put("流程定义id","cccc");
-        lhm.put("活动定义id","dddd");
+        lhm.put("当前人id","bbbb33");
+        lhm.put("流程定义id","cccc33");
+        lhm.put("流程实例id","dddd333");
+        ctx.setVariables(lhm);
 
 
-        String  el  = "获取部门领导（当前人id,流程定义id）";
+        String  elstr  = "获取当前处理人(当前人id,流程定义id)";
+        String expression = getEL(elstr,lhm);
+
+       // String expression ="#execute(#currentid,#processdefid)";
+
 
         //执行方法1
-        Person resultp  = parser.parseExpression("#execute('dddd','xxx')").getValue(ctx,Person.class);
+       // Person resultp  = parser.parseExpression("#execute('dddd','xxx')").getValue(ctx,Person.class);
+       Person resultp  = parser.parseExpression(expression).getValue(ctx,Person.class);
         log.info("executeperson result:{}",resultp.getName());
 
+    }
+    public String  getEL(String el,Map<String,Object> hm){
+
+         // el  = "获取当前处理人(当前人id,流程定义id)";
+        String expression=  el.replace(" ", "");
+        expression=  el.replaceFirst(el.substring(0,el.indexOf('(')),"#execute");
+        String quStr=expression.substring(el.indexOf("(")+2,el.indexOf(")")+1);
+        //String quStr = expression.replaceAll("\\(.*?\\)|\\{.*?}|\\[.*?]|（.*?）", "");
+
+        if(quStr!=null|| !"".equals(quStr)){
+            String[] ary = quStr.split(",");//使用字符串逗号 ,切割字符串
+            for(String item: ary){
+                String value = "'"+hm.get(item)+"'";
+                expression = expression.replace(item,value);
+            }
+        }
+        System.out.println(expression);
+
+        //String expression ="#execute(#currentid,#processdefid)";
+        return expression;
     }
 
 
