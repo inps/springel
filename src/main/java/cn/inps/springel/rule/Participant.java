@@ -1,6 +1,6 @@
 package cn.inps.springel.rule;
 
-public class Person {
+public class Participant {
 
     public  String name;
 

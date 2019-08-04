@@ -11,9 +11,7 @@ import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 import java.lang.reflect.Method;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -70,12 +68,12 @@ public class SpringExpressionTest {
 
 
         EvaluationContext ctx2 = new StandardEvaluationContext();
-        Person person = new Person();
-        person.setAge("age18");
-        person.setName("name18");
-        ctx2.setVariable("p", person);
+        Participant participant = new Participant();
+        participant.setAge("age18");
+        participant.setName("name18");
+        ctx2.setVariable("p", participant);
         //执行表达式1
-        String exp  = parser.parseExpression("name").getValue(person,String.class);
+        String exp  = parser.parseExpression("name").getValue(participant,String.class);
         log.info("exp result:{}",exp);
         //执行表达式2
         String executeperson  = parser.parseExpression("#p.name").getValue(ctx2).toString();
@@ -83,7 +81,7 @@ public class SpringExpressionTest {
 
 
         //执行方法1
-//        Person resultp  = parser.parseExpression("#execute1('dddd','xxx')").getValue(ctx,Person.class);
+//        Participant resultp  = parser.parseExpression("#execute1('dddd','xxx')").getValue(ctx,Participant.class);
 //        log.info("executeperson result:{}",resultp.getName());
 
         //执行方法2
@@ -91,9 +89,9 @@ public class SpringExpressionTest {
 //        log.info("ress:{}",result1.toString());
 
         //执行方法2
-       Person result1 = parser.parseExpression("@resolv").getValue(ctx, Person.class);
+       Participant result1 = parser.parseExpression("@resolv").getValue(ctx, Participant.class);
 
-      //  Person result2 = parser.parseExpression("@aa").getValue(ctx, Person.class);
+      //  Participant result2 = parser.parseExpression("@aa").getValue(ctx, Participant.class);
 
        // log.info("ressxxx:{}",result2.getName());
 
@@ -116,10 +114,13 @@ public class SpringExpressionTest {
 
        parser.parseExpression("#key").setValue(ctx,"xxx");
 
-        Person result2 = parser.parseExpression("@key").getValue(ctx, Person.class);
+        Participant result2 = parser.parseExpression("@key").getValue(ctx, Participant.class);
 
     }
 
+    /**
+     * 执行方法规则
+     */
     @Test
     public void testMethod(){
         ExpressionParser parser = new SpelExpressionParser();
@@ -127,7 +128,7 @@ public class SpringExpressionTest {
 
         //输入参数
         String className  = "cn.inps.springel.rule.MyRule";
-        String  el  = "获取当(流程实例id,,'dd)";
+        String  el  = "获取当(流程实例id,当前人id,dd)";
         int count = 0;
 
 
@@ -140,7 +141,7 @@ public class SpringExpressionTest {
         //替换规则表达式中所有的空格和'符合
         String expression=  el.replace(" ", "");
         expression=  expression.replace("'", "");
-        expression=  expression.replaceFirst(el.substring(0,el.indexOf('(')),"#execute");
+
 
         // 通过正则表达式获取小括号中的内容，表达式变为   #execute（'当前人id的值','流程定义id的值'）
         Pattern pattern = Pattern.compile("\\([^)]+\\)");
@@ -154,19 +155,36 @@ public class SpringExpressionTest {
 
             String[] ary = quStr.split(",");//使用字符串逗号 ,切割字符串
             count = ary.length;
+
+
             // 现将数据替换成#execute（{0},{1},{2}）, 如果出现了一个key的value 和后面要替换的key相同，可能会出现替换错误
             for (int i = 0; i < count; i++) {
-                if(!String.valueOf(ary[i]).equals("")) {
-                    expression = expression.replace(String.valueOf(ary[i]), "{" + i + "}");
+                String aryStr  = String.valueOf(ary[i]);
+                if(!aryStr.equals("")) {
+                    // 使用replaceFirst防止参数名称部分相同，导致全部被替换
+                    try {
+                        expression = expression.replaceFirst(aryStr, "{" + i + "}");
+                    } catch (Exception e) {
+                        log.info("表达式参数不正确，包含未识别字符串。");
+                        e.printStackTrace();
+                    }
                 }
             }
             for (int i = 0; i < count; i++) {
-                expression = expression.replaceAll(String.format("\\{%d\\}", i), "'"+String.valueOf(lhm.get(ary[i]))+"'");
+                // 忽略map中的key大小写
+                String  aryValue  = String.valueOf(lhm.get(ary[i]));
+                for(String k:lhm.keySet()) {
+                    if (k.equalsIgnoreCase(ary[i])) {
+                       aryValue = String.valueOf(lhm.get(k));
+                    }
+                }
+                //替换字符串{0}{1}中的对应的值
+                expression = expression.replaceFirst(String.format("\\{%d\\}", i), "'"+aryValue+"'");
             }
-            log.info("需要执行的表单式:{}",expression);
 
+
+//            //直接替换字符串，如果出现了一个key的value 和后面要替换的key相同，可能会出现替换错误
 //            for(String item: ary){
-//                //如果出现了一个key的value 和后面要替换的key相同，可能会出现替换错误
 //                String value = "'"+lhm.get(item)+"'";
 //                expression = expression.replace(item,value);
 //            }
@@ -174,68 +192,143 @@ public class SpringExpressionTest {
 
         //执行规则对应的方法， 没有在规则中使用 BeanResolver resolve， 由于规则编写过程中不知道map<string ,object>中的参数含义，对规则编写不友好。
         Method executeMethod = null;
-        try {
+        String executeMethodName ="";
+
 
             if(className!=null||!className.trim().equals("")){
-            //  execute = MyBeanResolver.class.getDeclaredMethod("execute");
                 try {
-                    if(count==0){
-                        executeMethod = Class.forName(className).getDeclaredMethod("execute");
-                    }else if(count==1) {
-                        executeMethod = Class.forName(className).getDeclaredMethod("execute", String.class);
-                    }else if(count==2){
-                        executeMethod = Class.forName(className).getDeclaredMethod("execute", String.class,String.class);
-                    }else if(count==3){
-                        executeMethod = Class.forName(className).getDeclaredMethod("execute", String.class,String.class,String.class);
-                    }else if(count==4){
-                        executeMethod = Class.forName(className).getDeclaredMethod("execute", String.class,String.class,String.class,String.class);
-                    }else if(count==5){
-                        executeMethod = Class.forName(className).getDeclaredMethod("execute", String.class,String.class,String.class,String.class,String.class);
-                    }else if(count==6){
-                        executeMethod = Class.forName(className).getDeclaredMethod("execute", String.class,String.class,String.class,String.class,String.class,String.class);
-                    }else if(count==7){
-                        executeMethod = Class.forName(className).getDeclaredMethod("execute", String.class,String.class,String.class,String.class,String.class,String.class,String.class);
-                    }else{
-                        log.info("规则方法参数数量不正确，规则参数大于7个！");
-                    };
+                    // 动态方法名称
+                    Method[] methods = Class.forName(className).getDeclaredMethods();
+                    for (Method method:methods) {
+
+//                        String [] s = new String[count];
+//                        for(int i = 0; i < count; i++) {
+//                            s[i] = String.valueOf("java.lang.String");
+//                        }
+
+                        Class[]  ptypes = method.getParameterTypes();
+                        //判断有任意一个类型不是String都不能执行
+                        boolean pTypeFlag =true;
+                        for (Class pt: ptypes) {
+                            if(pt.getName()=="java.lang.String"){
+                                pTypeFlag = pTypeFlag && true;
+                            }else {
+                                pTypeFlag = false;
+                            }
+                            log.info("参数名称:{},参数类型{},所有参数类型是否为String:{}",method.getName(),pt.getName(),pTypeFlag);
+                        }
+                       // Class<?> a = method.getGenericReturnType();
+                        String typeName = method.getGenericReturnType().getTypeName();
+                        log.info("方法类型：{}",typeName);
+
+                        if(typeName.contains("Participant") && typeName.contains("List")  && method.getParameterCount()==count&&pTypeFlag){
+                            executeMethod=method;
+                            executeMethodName = method.getName();
+                        }else {
+                            log.info("没有找到参与者规则的方法。");
+                        }
+                    }
+
+
+//                    if(count==0){
+//                        executeMethod = Class.forName(className).getDeclaredMethod("execute");
+//                    }else if(count==1) {
+//                        executeMethod = Class.forName(className).getDeclaredMethod("execute", String.class);
+//                    }else if(count==2){
+//                        executeMethod = Class.forName(className).getDeclaredMethod("execute", String.class,String.class);
+//                    }else if(count==3){
+//                        executeMethod = Class.forName(className).getDeclaredMethod("execute", String.class,String.class,String.class);
+//                    }else if(count==4){
+//                        executeMethod = Class.forName(className).getDeclaredMethod("execute", String.class,String.class,String.class,String.class);
+//                    }else if(count==5){
+//                        executeMethod = Class.forName(className).getDeclaredMethod("execute", String.class,String.class,String.class,String.class,String.class);
+//                    }else if(count==6){
+//                        executeMethod = Class.forName(className).getDeclaredMethod("execute", String.class,String.class,String.class,String.class,String.class,String.class);
+//                    }else if(count==7){
+//                        executeMethod = Class.forName(className).getDeclaredMethod("execute", String.class,String.class,String.class,String.class,String.class,String.class,String.class);
+//                    }else if(count==8){
+//                        executeMethod = Class.forName(className).getDeclaredMethod("execute", String.class,String.class,String.class,String.class,String.class,String.class,String.class,String.class);
+//                    } else{
+//                        log.info("规则方法参数数量不正确，规则参数大于8个！");
+//                    };
+
+
+//                    switch (count){
+//                        case 0:
+//                            executeMethod = Class.forName(className).getDeclaredMethod("execute");
+//                            break;
+//                        case 1:
+//                            executeMethod = Class.forName(className).getDeclaredMethod("execute", String.class);
+//                            break;
+//                        case 2:
+//                            executeMethod = Class.forName(className).getDeclaredMethod("execute", String.class,String.class);
+//                            break;
+//                        case 3:
+//                            executeMethod = Class.forName(className).getDeclaredMethod("execute", String.class,String.class,String.class);
+//                            break;
+//                        case 4:
+//                            executeMethod = Class.forName(className).getDeclaredMethod("execute", String.class,String.class,String.class,String.class);
+//                            break;
+//                        case 5:
+//                            executeMethod = Class.forName(className).getDeclaredMethod("execute", String.class,String.class,String.class,String.class,String.class);
+//                            break;
+//                        case 6:
+//                            executeMethod = Class.forName(className).getDeclaredMethod("execute", String.class,String.class,String.class,String.class,String.class,String.class);
+//                            break;
+//                        case 7:
+//                            executeMethod = Class.forName(className).getDeclaredMethod("execute", String.class,String.class,String.class,String.class,String.class,String.class,String.class);
+//                            break;
+//                        case 8:
+//                            executeMethod = Class.forName(className).getDeclaredMethod("execute", String.class,String.class,String.class,String.class,String.class,String.class,String.class,String.class);
+//                            break;
+//                         default:
+//                            log.info("规则方法参数数量不正确，规则参数大于8个！");
+//                            break;
+//                    }
+
+
                 } catch (ClassNotFoundException e) {
-                    log.info("没有找到规则对应的类");
+                    log.info("没有找到规则对应的类！");
                     e.printStackTrace();
                 }
+            }else{
+                log.info("规则定义所引用的类名为空！");
             }
-        } catch (NoSuchMethodException e) {
-            log.info("没有找到规则对应的方法");
-            e.printStackTrace();
-        }
-
+//        } catch (NoSuchMethodException e) {
+//            log.info("没有找到规则对应的方法");
+//            e.printStackTrace();
+//        }
+        expression=  expression.replaceFirst(el.substring(0,el.indexOf('(')),"#"+executeMethodName);
+        log.info("需要执行的表单式:{}",expression);
         //注册方法
-        ctx.registerFunction("execute", executeMethod);
+        ctx.registerFunction(executeMethodName, executeMethod);
 
         //增加变量, 由于不支持中文变量， 直接将值传入表达式  #execute（'当前人id的值','流程定义id的值'），没有采用以下方式
         //ctx.setVariables(lhm);
         // String expression ="#execute(#currentid,#processdefid)";
         // String expression = convertExpression(elstr,lhm);
 
-
-
         //执行方法1
-       // Person resultp  = parser.parseExpression("#execute('dddd','xxx')").getValue(ctx,Person.class);
-        Person resultp  = null;
+       // Participant resultp  = parser.parseExpression("#execute('dddd','xxx')").getValue(ctx,Participant.class);
+        List<Participant> resultp  = null;
         try {
-            resultp = parser.parseExpression(expression).getValue(ctx, Person.class);
+            resultp = (List<Participant>) parser.parseExpression(expression).getValue(ctx);
         } catch (EvaluationException e) {
-            log.info("表达式格式异常");
+            log.info("表达式格式异常,确认所有参数类型是否String");
             e.printStackTrace();
         } catch (ParseException e) {
-            log.info("解析表达式异常");
+            log.info("解析表达式异常,确认是否有规则对应的方法和返回值类型");
             e.printStackTrace();
         } catch (Exception e) {
             log.info("解析表达式格式异常，参数不能为空值。");
             e.printStackTrace();
         }
-        log.info("executeperson result:{}",resultp.getName());
+        log.info("executeperson result:{}",resultp.get(0).getName());
 
     }
+
+
+
 
 
     public String  convertExpression(String el,Map<String,Object> hm){
