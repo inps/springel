@@ -128,8 +128,9 @@ public class SpringExpressionTest {
 
         //输入参数
         String className  = "cn.inps.springel.rule.MyRule";
-        String  el  = "获取当";
-        int count = 0;
+        String  el  = "获取当(流程实例id,流程定义id,dd,xxxx)";
+        //参数数量
+        int paramCount = 0;
 
 
         Map<String,Object>  lhm =  new LinkedHashMap<String,Object>();
@@ -154,11 +155,11 @@ public class SpringExpressionTest {
             String quStr  = matcher.group(0);
             quStr = matcher.group().substring(1, matcher.group().length()-1);
             String[] ary = quStr.split(",");//使用字符串逗号 ,切割字符串
-            count = ary.length;
-            params = new String[count];
+            paramCount = ary.length;
+            params = new String[paramCount];
 
             // 现将数据替换成#execute（{0},{1},{2}）, 如果出现了一个key的value 和后面要替换的key相同，可能会出现替换错误
-            for (int i = 0; i < count; i++) {
+            for (int i = 0; i < paramCount; i++) {
                 String aryStr  = String.valueOf(ary[i]);
                 if(!aryStr.equals("")) {
                     // 使用replaceFirst防止参数名称部分相同，导致全部被替换
@@ -170,7 +171,7 @@ public class SpringExpressionTest {
                     }
                 }
             }
-            for (int i = 0; i < count; i++) {
+            for (int i = 0; i < paramCount; i++) {
                 // 忽略map中的key大小写
                 String  aryValue  = String.valueOf(lhm.get(ary[i]));
                 for(String k:lhm.keySet()) {
@@ -231,7 +232,7 @@ public class SpringExpressionTest {
                         log.info("方法类型：{}",typeName);
                         log.info("参数数量：{}",method.getParameterCount());
 
-                        if(typeName.contains("Participant") && typeName.contains("List")  && method.getParameterCount()==count&&pTypeFlag){
+                        if(typeName.contains("Participant") && typeName.contains("List")  && method.getParameterCount()==paramCount&&pTypeFlag){
                             executeMethod=method;
                             executeMethodName = method.getName();
                         }

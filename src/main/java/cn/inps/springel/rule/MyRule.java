@@ -5,9 +5,9 @@ import java.util.List;
 
 /**
  * 规则说明：
- * 1. 需要定义静态方法 ，  使用static对方法进行修饰
+ * 1. 如果使用springel进行解析，需要使用static对方法进行修饰
  * 2. 参与者规则返回值类型必须是 List<Participant>
- * 3. 静态方法的参数类型必须是String  ，  方法名称execute
+ * 3. 方法的参数类型必须是String  ，  默认方法名称execute
  */
 
 public class MyRule {
@@ -48,7 +48,7 @@ public class MyRule {
         return pp;
     }
 
-    public   Participant  ee(String input,String input1,String input2,String input3){
+    public   List<Participant>  ee(String input,int input1,String input2,String input3){
         System.out.println("input:"+input);
         System.out.println("input1:"+input1);
         System.out.println("input2:"+input2);
@@ -56,10 +56,12 @@ public class MyRule {
         Participant person = new Participant();
         person.setAge("age40");
         person.setName("name40");
-        return person;
+        List<Participant> pp= new ArrayList<>();
+        pp.add(person);
+        return pp;
     }
 
-    public static  Participant  xxxaa(String input,String input1,String input2,String input3){
+    public static  List<Participant>  xxxaa(String input,String input1,String input2,String input3){
         System.out.println("input:"+input);
         System.out.println("input1:"+input1);
         System.out.println("input2:"+input2);
@@ -67,6 +69,8 @@ public class MyRule {
         Participant person = new Participant();
         person.setAge("age40");
         person.setName("name40");
-        return person;
+        List<Participant> pp= new ArrayList<>();
+        pp.add(person);
+        return pp;
     }
 }
