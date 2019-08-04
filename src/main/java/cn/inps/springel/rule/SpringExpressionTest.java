@@ -128,7 +128,7 @@ public class SpringExpressionTest {
 
         //输入参数
         String className  = "cn.inps.springel.rule.MyRule";
-        String  el  = "获取当(流程实例id,当前人id,dd)";
+        String  el  = "获取当";
         int count = 0;
 
 
@@ -146,16 +146,16 @@ public class SpringExpressionTest {
         // 通过正则表达式获取小括号中的内容，表达式变为   #execute（'当前人id的值','流程定义id的值'）
         Pattern pattern = Pattern.compile("\\([^)]+\\)");
         Matcher matcher = pattern.matcher(expression);
+        String[] params =null;
 
         if (matcher.find())
         {
             // System.out.println(matcher.group());
             String quStr  = matcher.group(0);
             quStr = matcher.group().substring(1, matcher.group().length()-1);
-
             String[] ary = quStr.split(",");//使用字符串逗号 ,切割字符串
             count = ary.length;
-
+            params = new String[count];
 
             // 现将数据替换成#execute（{0},{1},{2}）, 如果出现了一个key的value 和后面要替换的key相同，可能会出现替换错误
             for (int i = 0; i < count; i++) {
@@ -178,6 +178,8 @@ public class SpringExpressionTest {
                        aryValue = String.valueOf(lhm.get(k));
                     }
                 }
+                // 只为invoke赋值
+                params[i] =aryValue;
                 //替换字符串{0}{1}中的对应的值
                 expression = expression.replaceFirst(String.format("\\{%d\\}", i), "'"+aryValue+"'");
             }
@@ -191,20 +193,27 @@ public class SpringExpressionTest {
         }
 
         //执行规则对应的方法， 没有在规则中使用 BeanResolver resolve， 由于规则编写过程中不知道map<string ,object>中的参数含义，对规则编写不友好。
+        Object objInst =null;
+        Method[] methods =null;
         Method executeMethod = null;
+        Method defaultMethod =null;
         String executeMethodName ="";
 
 
-            if(className!=null||!className.trim().equals("")){
+        if(className!=null||!className.trim().equals("")){
                 try {
                     // 动态方法名称
-                    Method[] methods = Class.forName(className).getDeclaredMethods();
+                    Class<?> Clazz = Class.forName(className);
+                    objInst = Clazz.newInstance();//实例化
+                    methods = Clazz.getDeclaredMethods();
                     for (Method method:methods) {
 
 //                        String [] s = new String[count];
 //                        for(int i = 0; i < count; i++) {
 //                            s[i] = String.valueOf("java.lang.String");
 //                        }
+                        // 对默认方法进行赋值
+                        defaultMethod  =methods[0];
 
                         Class[]  ptypes = method.getParameterTypes();
                         //判断有任意一个类型不是String都不能执行
@@ -217,15 +226,18 @@ public class SpringExpressionTest {
                             }
                             log.info("参数名称:{},参数类型{},所有参数类型是否为String:{}",method.getName(),pt.getName(),pTypeFlag);
                         }
-                       // Class<?> a = method.getGenericReturnType();
+
                         String typeName = method.getGenericReturnType().getTypeName();
                         log.info("方法类型：{}",typeName);
+                        log.info("参数数量：{}",method.getParameterCount());
 
                         if(typeName.contains("Participant") && typeName.contains("List")  && method.getParameterCount()==count&&pTypeFlag){
                             executeMethod=method;
                             executeMethodName = method.getName();
-                        }else {
-                            log.info("没有找到参与者规则的方法。");
+                        }
+                        if(method.getParameterCount()==0) {
+                            defaultMethod = method;
+                            log.info("为默认执行方法赋值。");
                         }
                     }
 
@@ -290,6 +302,10 @@ public class SpringExpressionTest {
                 } catch (ClassNotFoundException e) {
                     log.info("没有找到规则对应的类！");
                     e.printStackTrace();
+                }catch (InstantiationException e) {
+                    e.printStackTrace();
+                } catch (IllegalAccessException e) {
+                    e.printStackTrace();
                 }
             }else{
                 log.info("规则定义所引用的类名为空！");
@@ -298,8 +314,13 @@ public class SpringExpressionTest {
 //            log.info("没有找到规则对应的方法");
 //            e.printStackTrace();
 //        }
-        expression=  expression.replaceFirst(el.substring(0,el.indexOf('(')),"#"+executeMethodName);
-        log.info("需要执行的表单式:{}",expression);
+        if(expression.contains("(")) {
+            expression = expression.replaceFirst(el.substring(0, el.indexOf('(')), "#" + executeMethodName);
+            log.info("需要执行的表单式:{}", expression);
+        }else{
+            executeMethod=defaultMethod;
+            log.info("表达式中不包含()执行了默认方法");
+        }
         //注册方法
         ctx.registerFunction(executeMethodName, executeMethod);
 
@@ -312,7 +333,8 @@ public class SpringExpressionTest {
        // Participant resultp  = parser.parseExpression("#execute('dddd','xxx')").getValue(ctx,Participant.class);
         List<Participant> resultp  = null;
         try {
-            resultp = (List<Participant>) parser.parseExpression(expression).getValue(ctx);
+            //resultp = (List<Participant>) parser.parseExpression(expression).getValue(ctx);
+            resultp = (List<Participant>) executeMethod.invoke(objInst,params);
         } catch (EvaluationException e) {
             log.info("表达式格式异常,确认所有参数类型是否String");
             e.printStackTrace();
@@ -320,7 +342,7 @@ public class SpringExpressionTest {
             log.info("解析表达式异常,确认是否有规则对应的方法和返回值类型");
             e.printStackTrace();
         } catch (Exception e) {
-            log.info("解析表达式格式异常，参数不能为空值。");
+            log.info("解析表达式格式异常，未找到对应的方法，参数不能为空值。");
             e.printStackTrace();
         }
         log.info("executeperson result:{}",resultp.get(0).getName());
