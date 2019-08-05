@@ -350,6 +350,126 @@ public class SpringExpressionTest {
 
     }
 
+    /**
+     * RuleUtils 规则执行的方法
+     * @param el
+     * @param ruleParam
+     * @param className
+     * @return
+     */
+    public static Object execute1(String el, RuleParameters ruleParam, String className) {
+        //输入参数
+        //参数数量
+        int paramCount = 0;
+        Map<String,Object> lhm =  ruleParam.getEnv();
+
+        //替换规则表达式中所有的空格和'符合
+        String expression=  el.replace(" ", "");
+        expression=  expression.replace("'", "");
+
+        // 通过正则表达式获取小括号中的内容，表达式变为   #execute（'当前人id的值','流程定义id的值'）
+        Pattern pattern = Pattern.compile("\\([^)]+\\)");
+        Matcher matcher = pattern.matcher(expression);
+        String[] params =null;
+
+        if (matcher.find())
+        {
+            // System.out.println(matcher.group());
+            String quStr  = matcher.group(0);
+            quStr = matcher.group().substring(1, matcher.group().length()-1);
+            String[] ary = quStr.split(",");//使用字符串逗号 ,切割字符串
+            paramCount = ary.length;
+            params = new String[paramCount];
+
+            for (int i = 0; i < paramCount; i++) {
+                // 忽略map中的key大小写
+                String  aryValue  = String.valueOf(lhm.get(ary[i]));
+                for(String k:lhm.keySet()) {
+                    if (k.equalsIgnoreCase(ary[i])) {
+                        aryValue = String.valueOf(lhm.get(k));
+                    }
+                }
+                // 只为invoke赋值
+                params[i] =aryValue;
+                //替换字符串{0}{1}中的对应的值
+                //expression = expression.replaceFirst(String.format("\\{%d\\}", i), "'"+aryValue+"'");
+            }
+        }
+        //执行规则对应的方法， 没有在规则中使用 BeanResolver resolve， 由于规则编写过程中不知道map<string ,object>中的参数含义，对规则编写不友好。
+        Object objInst =null;
+        Method[] methods =null;
+        Method executeMethod = null;
+        Method defaultMethod =null;
+        //判断类名是否为空
+        if(className!=null||!className.trim().equals("")){
+            try {
+                // 动态方法名称
+                Class<?> Clazz = Class.forName(className);
+                objInst = Clazz.newInstance();//实例化
+                methods = Clazz.getDeclaredMethods();
+                for (Method method:methods) {
+
+                    // 对默认方法进行赋值
+                    defaultMethod  =methods[0];
+
+                    Class[]  ptypes = method.getParameterTypes();
+                    //判断有任意一个类型不是String都不能执行
+                    boolean pTypeFlag =true;
+                    for (Class pt: ptypes) {
+                        if(pt.getName()=="java.lang.String"){
+                            pTypeFlag = pTypeFlag && true;
+                        }else {
+                            pTypeFlag = false;
+                        }
+                        log.info("参数名称:{},参数类型{},所有参数类型是否为String:{}",method.getName(),pt.getName(),pTypeFlag);
+                    }
+
+                    String typeName = method.getGenericReturnType().getTypeName();
+                    log.info("方法类型：{}",typeName);
+                    log.info("参数数量：{}",method.getParameterCount());
+
+                    if(method.getParameterCount()==paramCount&&pTypeFlag){
+                        executeMethod=method;
+                    }
+                    if(method.getParameterCount()==0) {
+                        defaultMethod = method;
+                        log.info("为默认执行方法赋值。");
+                    }
+                }
+
+            } catch (ClassNotFoundException e) {
+                log.info("没有找到规则对应的类！");
+                e.printStackTrace();
+            }catch (InstantiationException e) {
+                e.printStackTrace();
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            }
+        }else{
+            log.info("规则定义所引用的类名为空！");
+        }
+//        } catch (NoSuchMethodException e) {
+//            log.info("没有找到规则对应的方法");
+//            e.printStackTrace();
+//        }
+        if(!expression.contains("(")) {
+            executeMethod=defaultMethod;
+            log.info("表达式中不包含()执行了默认方法");
+        }
+
+        //执行方法
+        Object resultObject  = null;
+        try {
+            resultObject = executeMethod.invoke(objInst,params);
+        }catch (Exception e) {
+            log.info("解析表达式格式异常，未找到对应的方法，参数不能为空值。");
+            e.printStackTrace();
+        }
+        //log.info("executeperson result:{}",obj.get(0).getName());
+        return  resultObject;
+    }
+
+
 
 
 
