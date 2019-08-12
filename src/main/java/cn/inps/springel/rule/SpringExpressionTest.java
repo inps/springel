@@ -357,11 +357,12 @@ public class SpringExpressionTest {
      * @param className
      * @return
      */
-    public static Object execute1(String el, RuleParameters ruleParam, String className) {
+    public static Object execute1(String el, Map<String,Object>  ruleParam, String className) {
         //输入参数
         //参数数量
         int paramCount = 0;
-        Map<String,Object> lhm =  ruleParam.getEnv();
+     //   Map<String,Object> lhm =  ruleParam.getEnv();  //RuleParameters ruleParam  的入参。
+        Map<String,Object> lhm =  ruleParam;
 
         //替换规则表达式中所有的空格和'符合
         String expression=  el.replace(" ", "");
