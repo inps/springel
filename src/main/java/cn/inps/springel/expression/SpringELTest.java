@@ -25,8 +25,11 @@ public class SpringELTest {
     @Test
     public void testEL() {
         ExpressionParser parser = new SpelExpressionParser();
-        Expression exp = parser.parseExpression("'Hello World'");
-        String message = (String) exp.getValue();
+        StandardEvaluationContext ctx = new StandardEvaluationContext();
+        ctx.setVariable("aid","1");
+        ctx.setVariable("bid","1");
+        Expression exp = parser.parseExpression("#aid=='zhoudl'||#bid=='222'");
+        Boolean message = (Boolean) exp.getValue(ctx);
         System.out.println(message);
     }
 
