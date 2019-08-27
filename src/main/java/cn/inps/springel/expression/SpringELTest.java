@@ -26,10 +26,11 @@ public class SpringELTest {
     public void testEL() {
         ExpressionParser parser = new SpelExpressionParser();
         StandardEvaluationContext ctx = new StandardEvaluationContext();
-        ctx.setVariable("aid","1");
-        ctx.setVariable("bid","1");
-        Expression exp = parser.parseExpression("#aid=='zhoudl'||#bid=='222'");
-        Boolean message = (Boolean) exp.getValue(ctx);
+        ctx.setVariable("current_user_id","zhoudl");
+        ctx.setVariable("bid",444);
+        Expression exp = parser.parseExpression("#current_user_id=='zhoudlx'||#bid>=80");
+        //Expression exp = parser.parseExpression("2.0 * 3e0 * 4");
+        Object message = exp.getValue(ctx);
         System.out.println(message);
     }
 
