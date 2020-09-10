@@ -27,8 +27,9 @@ public class SpringELTest {
         ExpressionParser parser = new SpelExpressionParser();
         StandardEvaluationContext ctx = new StandardEvaluationContext();
         ctx.setVariable("current_user_id","zhoudl");
-        ctx.setVariable("bid",444);
-        Expression exp = parser.parseExpression("#current_user_id=='zhoudlxx'||#bid>=80");
+        ctx.setVariable("a",444);
+        Expression exp = parser.parseExpression("#current_user_id=='zhoudlxx'||#a>=80");
+       // Expression exp = parser.parseExpression("1==1");
         //Expression exp = parser.parseExpression("2.0 * 3e0 * 4");
         Object message = exp.getValue(ctx);
         System.out.println(message);
